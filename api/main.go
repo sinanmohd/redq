@@ -10,6 +10,8 @@ import (
 func Run(db *redqdb.SafeDB) {
 	const prefix string = "POST /_redq/api"
 
+	login := newLogin(db)
+	http.Handle(prefix+"/ac/login", login)
 	exampleApi := newExamplApiName(db)
 	http.Handle(prefix+"/example", exampleApi)
 

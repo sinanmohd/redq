@@ -4,7 +4,7 @@ import "errors"
 
 type Account struct {
 	UserName string
-	PassHash string
+	PassHash string `json:",omitempty"`
 
 	Info *Login
 }
@@ -69,9 +69,10 @@ func (ac *Account) Login(safe *SafeDB) error {
 	if err != nil {
 		return err
 	}
-	if PassHash != ac.PassHash {
+	if PassHash != ToBlake3(ac.PassHash) {
 		return errors.New("Auth failed")
 	}
+	ac.PassHash = ""
 
 	err = ac.Info.Bearer.Generate(safe, ac.Info)
 	if err != nil {
