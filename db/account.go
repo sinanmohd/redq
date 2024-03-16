@@ -1,18 +1,22 @@
 package db
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"log"
+)
 
 type Account struct {
-	UserName string
-	PassHash string `json:",omitempty"`
+	UserName string `validate:"required,alphanum,max=64"`
+	PassHash string `json:",omitempty" validate:"required,min=10,max=128"`
 
 	Info *Login
 }
 
 type Login struct {
 	id                  uint
-	Level               uint
-	FirstName, LastName string
+	Level               uint   `validate:"gte=0,lte=100"`
+	FirstName, LastName string `validate:"required,alphanumunicode"`
 	Bearer              *Bearer
 }
 
@@ -29,10 +33,18 @@ func (ac *Account) CreateAccount(safe *SafeDB) error {
 		VALUES (NULL, ?, ?, ?, ?, ?);
 	`
 
+	err := safe.validate.Struct(ac)
+	if err == nil {
+		err = safe.validate.Struct(ac.Login)
+	}
+	if err != nil {
+		return err
+	}
+
 	safe.mu.Lock()
 	defer safe.mu.Unlock()
 
-	_, err := safe.db.Exec(
+	_, err = safe.db.Exec(
 		sqlStatement,
 		ac.UserName,
 		ToBlake3(ac.PassHash),
@@ -52,6 +64,13 @@ func (ac *Account) Login(safe *SafeDB) error {
 		WHERE Accounts.UserName = ?
 	`
 
+	err := safe.validate.Struct(ac)
+	fmt.Println(ac.PassHash, ac.UserName)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	ac.Info = &Login{}
 	ac.Info.Bearer = &Bearer{}
 	safe.mu.Lock()
@@ -59,7 +78,7 @@ func (ac *Account) Login(safe *SafeDB) error {
 	safe.mu.Unlock()
 
 	var PassHash string
-	err := row.Scan(
+	err = row.Scan(
 		&ac.Info.id,
 		&PassHash,
 		&ac.Info.FirstName,

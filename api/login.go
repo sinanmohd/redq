@@ -4,17 +4,19 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	redqdb "sinanmohd.com/redq/db"
 )
 
 type loginAPI struct {
-	db   *redqdb.SafeDB
-	req  *RequestLogin
-	resp *ResponseLogin
+	db       *redqdb.SafeDB
+	validate *validator.Validate
+	req      *RequestLogin
+	resp     *ResponseLogin
 }
 
 type RequestLogin struct {
-	Account *redqdb.Account
+	Account *redqdb.Account `validate:"required"`
 }
 
 type ResponseLogin struct {
@@ -24,6 +26,7 @@ type ResponseLogin struct {
 func newLogin(db *redqdb.SafeDB) *loginAPI {
 	a := &loginAPI{}
 	a.db = db
+	a.validate = validator.New(validator.WithRequiredStructEnabled())
 
 	return a
 }
@@ -31,7 +34,11 @@ func newLogin(db *redqdb.SafeDB) *loginAPI {
 func (a *loginAPI) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	a.req = &RequestLogin{}
 	a.resp = &ResponseLogin{}
+
 	err := unmarshal(r.Body, a.req)
+	if err == nil {
+		err = a.validate.Struct(a.req)
+	}
 	if err != nil {
 		handleError(err, rw, http.StatusUnprocessableEntity)
 		return

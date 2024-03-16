@@ -6,11 +6,13 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/go-playground/validator/v10"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type SafeDB struct {
-	mu sync.Mutex
+	mu       sync.Mutex
+	validate *validator.Validate
 
 	path string
 	db   *sql.DB
@@ -70,5 +72,6 @@ func NewSafeDB() (*SafeDB, error) {
 		return nil, err
 	}
 
+	safe.validate = validator.New(validator.WithRequiredStructEnabled())
 	return safe, nil
 }
