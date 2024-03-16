@@ -20,7 +20,7 @@ type RequestApiName struct {
 
 type ResponseApiName struct {
 	Bearer *redqdb.Bearer
-	Error  string
+	Error  string `json:"error,omitempty"`
 }
 
 func newExamplApiName(db *redqdb.SafeDB) *examplApiName {
