@@ -34,9 +34,6 @@ func (ac *Account) CreateAccount(safe *SafeDB) error {
 	`
 
 	err := safe.validate.Struct(ac)
-	if err == nil {
-		err = safe.validate.Struct(ac.Login)
-	}
 	if err != nil {
 		return err
 	}
