@@ -15,7 +15,7 @@
       default = pkgs.mkShell {
         name = "dev";
 
-        buildInputs = with pkgs; [ go_1_22 gopls jq ];
+        buildInputs = with pkgs; [ go_1_22 gopls jq sqlite ];
 	shellHook = ''
           export PS1="\033[0;36m[ ]\033[0m $PS1"
         '';
