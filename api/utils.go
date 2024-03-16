@@ -2,7 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
+	"net/http"
 )
 
 func unmarshal(r io.Reader, v any) error {
@@ -19,11 +22,10 @@ func unmarshal(r io.Reader, v any) error {
 	return nil
 }
 
-func marshal(v any) (string, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
+func handleError(err error, rw http.ResponseWriter, status int) {
+	log.Println(err)
 
-	return string(b), nil
+	rw.WriteHeader(status)
+	json := fmt.Sprintf(`{"Error": "%v"}`, http.StatusText(status))
+	rw.Write([]byte(json))
 }

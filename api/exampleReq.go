@@ -1,8 +1,8 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	redqdb "sinanmohd.com/redq/db"
@@ -20,7 +20,6 @@ type RequestApiName struct {
 
 type ResponseApiName struct {
 	Bearer *redqdb.Bearer
-	Error  string `json:"error,omitempty"`
 }
 
 func newExamplApiName(db *redqdb.SafeDB) *examplApiName {
@@ -36,24 +35,23 @@ func (a *examplApiName) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	a.resp.Bearer = &redqdb.Bearer{}
 
 	err := unmarshal(r.Body, a.req)
+	fmt.Println(a.req)
 	if err != nil {
-		log.Println(err)
+		handleError(err, rw, http.StatusUnprocessableEntity)
 		return
 	}
 
 	err = a.resp.Bearer.VerifyAndUpdate(a.db, a.req.BearerToken)
 	if err != nil {
-		log.Println(err)
-		a.resp.Error = err.Error()
+		handleError(err, rw, http.StatusUnauthorized)
 		return
 	}
 
-	json, err := marshal(a.resp)
+	json, err := json.Marshal(a.resp)
 	if err != nil {
-		log.Println(err)
-		a.resp.Error = err.Error()
+		handleError(err, rw, http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprintf(rw, json)
+	rw.Write(json)
 }
