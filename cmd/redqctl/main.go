@@ -38,7 +38,7 @@ func create(args []string, db *redqdb.SafeDB) {
 		"The first name to associate with the account")
 	f.StringVar(&ac.Info.LastName, "lname", "",
 		"The last name to associate with the account")
-	f.StringVar(&ac.PassHash, "pass", "",
+	f.StringVar(&ac.Password, "pass", "",
 		"The password to associate with the account")
 	f.UintVar(&ac.Info.Level, "level", 0,
 		"The level to associate with the account")

@@ -8,7 +8,7 @@ import (
 
 type Account struct {
 	UserName string `validate:"required,alphanum,max=64"`
-	PassHash string `json:",omitempty" validate:"required,min=10,max=128"`
+	Password string `json:",omitempty" validate:"required,min=10,max=128"`
 
 	Info *Login
 }
@@ -25,7 +25,7 @@ func (ac *Account) CreateAccount(safe *SafeDB) error {
 		INSERT INTO Accounts (
 			id,
 			UserName,
-			PassHash,
+			Password,
 			Level,
 			FirstName,
 			LastName
@@ -47,7 +47,7 @@ func (ac *Account) CreateAccount(safe *SafeDB) error {
 	_, err = safe.db.Exec(
 		sqlStatement,
 		ac.UserName,
-		ToBlake3(ac.PassHash),
+		ToBlake3(ac.Password),
 
 		ac.Info.FirstName,
 		ac.Info.LastName,
@@ -59,13 +59,13 @@ func (ac *Account) CreateAccount(safe *SafeDB) error {
 
 func (ac *Account) Login(safe *SafeDB) error {
 	const sqlStatementQuery string = `
-		SELECT id, PassHash, Level, FirstName, LastName
+		SELECT id, Password, Level, FirstName, LastName
 		FROM Accounts
 		WHERE Accounts.UserName = ?
 	`
 
 	err := safe.validate.Struct(ac)
-	fmt.Println(ac.PassHash, ac.UserName)
+	fmt.Println(ac.Password, ac.UserName)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -77,10 +77,10 @@ func (ac *Account) Login(safe *SafeDB) error {
 	row := safe.db.QueryRow(sqlStatementQuery, ac.UserName)
 	safe.mu.Unlock()
 
-	var PassHash string
+	var Password string
 	err = row.Scan(
 		&ac.Info.id,
-		&PassHash,
+		&Password,
 		&ac.Info.FirstName,
 		&ac.Info.LastName,
 		&ac.Info.Level,
@@ -88,10 +88,10 @@ func (ac *Account) Login(safe *SafeDB) error {
 	if err != nil {
 		return err
 	}
-	if PassHash != ToBlake3(ac.PassHash) {
+	if Password != ToBlake3(ac.Password) {
 		return errors.New("Auth failed")
 	}
-	ac.PassHash = ""
+	ac.Password = ""
 
 	err = ac.Info.Bearer.Generate(safe, ac.Info)
 	if err != nil {
@@ -103,7 +103,7 @@ func (ac *Account) Login(safe *SafeDB) error {
 
 func (ac *Account) fromBearer(safe *SafeDB, b *Bearer) error {
 	const sqlStatementAccount string = `
-		SELECT UserName, PassHash, Level, FirstName, LastName
+		SELECT UserName, Password, Level, FirstName, LastName
 		FROM Accounts
 		WHERE Accounts.id = ?
 	`
@@ -117,7 +117,7 @@ func (ac *Account) fromBearer(safe *SafeDB, b *Bearer) error {
 	ac.Info.Bearer = b
 	err := row.Scan(
 		&ac.UserName,
-		&ac.PassHash,
+		&ac.Password,
 
 		&ac.Info.FirstName,
 		&ac.Info.LastName,

@@ -36,7 +36,7 @@ func NewSafeDB() (*SafeDB, error) {
 		CREATE TABLE IF NOT EXISTS Accounts(
 			id        INTEGER PRIMARY KEY,
 			UserName  CHAR(64)	NOT NULL UNIQUE,
-			PassHash  CHAR(128)	NOT NULL,
+			Password  CHAR(128)	NOT NULL,
 
 			Level     INTEGER	NOT NULL,
 			FirstName CHAR(32)	NOT NULL,
