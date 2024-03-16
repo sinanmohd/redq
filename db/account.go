@@ -3,7 +3,7 @@ package db
 import "errors"
 
 type Account struct {
-	Email    string
+	UserName string
 	PassHash string
 
 	Info *Login
@@ -20,7 +20,7 @@ func (ac *Account) CreateAccount(safe *SafeDB) error {
 	const sqlStatement string = `
 		INSERT INTO Accounts (
 			id,
-			Email,
+			UserName,
 			PassHash,
 			Level,
 			FirstName,
@@ -34,7 +34,7 @@ func (ac *Account) CreateAccount(safe *SafeDB) error {
 
 	_, err := safe.db.Exec(
 		sqlStatement,
-		ac.Email,
+		ac.UserName,
 		ToBlake3(ac.PassHash),
 
 		ac.Info.FirstName,
@@ -49,13 +49,13 @@ func (ac *Account) Login(safe *SafeDB) error {
 	const sqlStatementQuery string = `
 		SELECT id, PassHash, Level, FirstName, LastName
 		FROM Accounts
-		WHERE Accounts.Email = ?
+		WHERE Accounts.UserName = ?
 	`
 
 	ac.Info = &Login{}
 	ac.Info.Bearer = &Bearer{}
 	safe.mu.Lock()
-	row := safe.db.QueryRow(sqlStatementQuery, ac.Email)
+	row := safe.db.QueryRow(sqlStatementQuery, ac.UserName)
 	safe.mu.Unlock()
 
 	var PassHash string
@@ -83,7 +83,7 @@ func (ac *Account) Login(safe *SafeDB) error {
 
 func (ac *Account) fromBearer(safe *SafeDB, b *Bearer) error {
 	const sqlStatementAccount string = `
-		SELECT Email, PassHash, Level, FirstName, LastName
+		SELECT UserName, PassHash, Level, FirstName, LastName
 		FROM Accounts
 		WHERE Accounts.id = ?
 	`
@@ -96,7 +96,7 @@ func (ac *Account) fromBearer(safe *SafeDB, b *Bearer) error {
 	ac.Info.id = b.accountId
 	ac.Info.Bearer = b
 	err := row.Scan(
-		&ac.Email,
+		&ac.UserName,
 		&ac.PassHash,
 
 		&ac.Info.FirstName,

@@ -32,8 +32,8 @@ func create(args []string, db *redqdb.SafeDB) {
 	ac := &redqdb.Account{}
 	ac.Info = &redqdb.Login{}
 
-	f.StringVar(&ac.Email, "email", "",
-		"The email to associate with the account")
+	f.StringVar(&ac.UserName, "username", "",
+		"The username to associate with the account")
 	f.StringVar(&ac.Info.FirstName, "fname", "",
 		"The first name to associate with the account")
 	f.StringVar(&ac.Info.LastName, "lname", "",

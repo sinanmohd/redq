@@ -33,7 +33,7 @@ func NewSafeDB() (*SafeDB, error) {
 	const create string = `
 		CREATE TABLE IF NOT EXISTS Accounts(
 			id        INTEGER PRIMARY KEY,
-			Email     CHAR(64)	NOT NULL UNIQUE,
+			UserName  CHAR(64)	NOT NULL UNIQUE,
 			PassHash  CHAR(128)	NOT NULL,
 
 			Level     INTEGER	NOT NULL,
