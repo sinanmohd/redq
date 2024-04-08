@@ -4,11 +4,12 @@
   outputs = { self, nixpkgs }: let
     lib = nixpkgs.lib;
 
-    supportedSystems = lib.platforms.unix;
     forSystem = f: system: f {
       inherit system;
       pkgs = import nixpkgs { inherit system; };
     };
+
+    supportedSystems = lib.platforms.unix;
     forAllSystems = f: lib.genAttrs supportedSystems (forSystem f);
   in {
     devShells = forAllSystems ({ system, pkgs, ... }: {
