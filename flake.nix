@@ -16,9 +16,22 @@
       default = pkgs.mkShell {
         name = "dev";
 
-        buildInputs = with pkgs; [ go_1_22 gopls jq sqlite ];
+        buildInputs = with pkgs; [
+          go
+          gopls
+
+          jq
+          sqlite
+
+          libbpf
+          ccls
+          clang
+          libllvm
+        ];
 	shellHook = ''
           export PS1="\033[0;36m[ ]\033[0m $PS1"
+          # stop littering eBPF C programs with go:build ignore
+          export CGO_ENABLED=0
         '';
       };
     });
