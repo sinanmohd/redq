@@ -21,7 +21,7 @@
           gopls
 
           jq
-          sqlite
+          sqlc
 
           libbpf
           ccls

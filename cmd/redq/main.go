@@ -2,16 +2,16 @@ package main
 
 import (
 	"log"
+	"net"
 
-	redqapi "sinanmohd.com/redq/api"
-	redqdb "sinanmohd.com/redq/db"
+	redqbpf "sinanmohd.com/redq/bpf"
 )
 
 func main() {
-	db, err := redqdb.NewSafeDB()
-	if err != nil {
-		log.Fatal(err)
-	}
+       iface, err := net.InterfaceByName("wlan0")
+       if err != nil {
+               log.Fatalf("lookup network: %s", err)
+       }
 
-	redqapi.Run(db)
+	redqbpf.Run(iface)
 }

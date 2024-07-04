@@ -1,0 +1,7 @@
+CREATE TABLE Usage (
+  HardwareAddr INTEGER NOT NULL,
+  StartTime TIMESTAMP NOT NULL,
+  StopTime TIMESTAMP NOT NULL,
+  Egress INTEGER NOT NULL,
+  Ingress INTEGER NOT NULL
+);
