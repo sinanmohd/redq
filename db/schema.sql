@@ -1,7 +1,7 @@
 CREATE TABLE Usage (
-  HardwareAddr INTEGER NOT NULL,
+  HardwareAddr BIGINT NOT NULL,
   StartTime TIMESTAMP NOT NULL,
   StopTime TIMESTAMP NOT NULL,
-  Egress INTEGER NOT NULL,
-  Ingress INTEGER NOT NULL
+  Egress BIGINT NOT NULL,
+  Ingress BIGINT NOT NULL
 );

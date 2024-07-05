@@ -20,11 +20,11 @@ INSERT INTO Usage (
 `
 
 type EnterUsageParams struct {
-	Hardwareaddr int32
+	Hardwareaddr int64
 	Starttime    pgtype.Timestamp
 	Stoptime     pgtype.Timestamp
-	Egress       int32
-	Ingress      int32
+	Egress       int64
+	Ingress      int64
 }
 
 func (q *Queries) EnterUsage(ctx context.Context, arg EnterUsageParams) error {

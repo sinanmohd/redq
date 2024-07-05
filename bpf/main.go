@@ -3,7 +3,6 @@ package bpf
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net"
 	"time"
@@ -20,7 +19,7 @@ type UsageStat struct {
 	ingress    uint64
 	egress     uint64
 }
-type UsageMap map[uint32]UsageStat
+type UsageMap map[uint64]UsageStat
 
 func Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
 	usageMap := make(UsageMap)
@@ -51,9 +50,9 @@ func Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
 	}
 	defer egressLink.Close()
 
-	bpfTicker := time.NewTicker(1 * time.Second)
+	bpfTicker := time.NewTicker(time.Second)
 	defer bpfTicker.Stop()
-	dbTicker := time.NewTicker(60 * time.Second)
+	dbTicker := time.NewTicker(time.Minute)
 	defer dbTicker.Stop()
 	for {
 		select {
@@ -95,7 +94,7 @@ func (usageMap UsageMap) updateDb(queries *db.Queries, ctxDb context.Context) er
 		}
 
 		err := queries.EnterUsage(ctxDb, db.EnterUsageParams{
-			Hardwareaddr: int32(key),
+			Hardwareaddr: int64(key),
 			Starttime: pgtype.Timestamp{
 				Time:  value.lastDbPush,
 				Valid: true,
@@ -104,8 +103,8 @@ func (usageMap UsageMap) updateDb(queries *db.Queries, ctxDb context.Context) er
 				Time:  value.lastSeen,
 				Valid: true,
 			},
-			Egress:  int32(value.egress),
-			Ingress: int32(value.ingress),
+			Egress:  int64(value.egress),
+			Ingress: int64(value.ingress),
 		})
 		if err != nil {
 			return err
@@ -119,14 +118,19 @@ func (usageMap UsageMap) updateDb(queries *db.Queries, ctxDb context.Context) er
 
 func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 	timeStart := time.Now()
-	batchKeys := make([]uint32, 4096)
+	batchKeys := make([]uint64, 4096)
 	batchValues := make([]uint64, 4096)
-	var key uint32
+	var key uint64
 
 	cursor := ebpf.MapBatchCursor{}
 	for {
 		_, err := ingress.BatchLookupAndDelete(&cursor, batchKeys, batchValues, nil)
 		for i := range batchKeys {
+			/* TODO: maybe BatchLookupAndDelete is not the best idea with mostly empty map */
+			if batchValues[i] == 0 {
+				continue
+			}
+
 			key = batchKeys[i]
 			usage, ok := usageMap[key]
 			if ok {
@@ -153,6 +157,11 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 	for {
 		_, err := egress.BatchLookupAndDelete(&cursor, batchKeys, batchValues, nil)
 		for i := range batchKeys {
+			/* TODO: maybe BatchLookupAndDelete is not the best idea with mostly empty map */
+			if batchValues[i] == 0 {
+				continue
+			}
+
 			key = batchKeys[i]
 			usage, ok := usageMap[key]
 			if ok {
