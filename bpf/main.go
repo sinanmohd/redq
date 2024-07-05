@@ -58,10 +58,16 @@ func Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
 	for {
 		select {
 		case <-bpfTicker.C:
-			usageMap.update(objs.IngressIp4UsageMap, objs.EgressIp4UsageMap)
+			err := usageMap.update(objs.IngressIp4UsageMap, objs.EgressIp4UsageMap)
+			if err != nil {
+				log.Printf("updating usageMap: %s", err)
+			}
+
 		case <-dbTicker.C:
-			usageMap.dbPush(queries, ctxDb)
-			continue
+			err := usageMap.updateDb(queries, ctxDb)
+			if err != nil {
+				log.Printf("updating Database: %s", err)
+			}
 		}
 	}
 }
@@ -80,7 +86,7 @@ func (usageStat UsageStat) expired(timeStart *time.Time) bool {
 	return false
 }
 
-func (usageMap UsageMap) dbPush(queries *db.Queries, ctxDb context.Context) {
+func (usageMap UsageMap) updateDb(queries *db.Queries, ctxDb context.Context) error {
 	timeStart := time.Now()
 
 	for key, value := range usageMap {
@@ -102,14 +108,16 @@ func (usageMap UsageMap) dbPush(queries *db.Queries, ctxDb context.Context) {
 			Ingress: int32(value.ingress),
 		})
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 
 		delete(usageMap, key)
 	}
+
+	return nil
 }
 
-func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) {
+func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 	timeStart := time.Now()
 	batchKeys := make([]uint32, 4096)
 	batchValues := make([]uint64, 4096)
@@ -137,8 +145,7 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			break
 		} else if err != nil {
-			fmt.Println(err)
-			break
+			return  err;
 		}
 	}
 
@@ -164,8 +171,9 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			break
 		} else if err != nil {
-			fmt.Println(err)
-			break
+			return err
 		}
 	}
+
+	return nil
 }
