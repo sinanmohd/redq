@@ -1,6 +1,7 @@
 package bpf
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -9,17 +10,19 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
+	"github.com/jackc/pgx/v5/pgtype"
+	"sinanmohd.com/redq/db"
 )
 
 type UsageStat struct {
-	lastSeen time.Time
+	lastSeen   time.Time
 	lastDbPush time.Time
-	ingress uint64
-	egress uint64
+	ingress    uint64
+	egress     uint64
 }
 type UsageMap map[uint32]UsageStat
 
-func Run(iface *net.Interface) {
+func Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
 	usageMap := make(UsageMap)
 
 	objs := bpfObjects{}
@@ -57,8 +60,52 @@ func Run(iface *net.Interface) {
 		case <-bpfTicker.C:
 			usageMap.update(objs.IngressIp4UsageMap, objs.EgressIp4UsageMap)
 		case <-dbTicker.C:
-			continue;
+			usageMap.dbPush(queries, ctxDb)
+			continue
 		}
+	}
+}
+
+func (usageStat UsageStat) expired(timeStart *time.Time) bool {
+	timeDiff := timeStart.Sub(usageStat.lastSeen)
+	if timeDiff > time.Minute {
+		return true
+	}
+
+	timeDiff = timeStart.Sub(usageStat.lastDbPush)
+	if timeDiff > time.Hour {
+		return true
+	}
+
+	return false
+}
+
+func (usageMap UsageMap) dbPush(queries *db.Queries, ctxDb context.Context) {
+	timeStart := time.Now()
+
+	for key, value := range usageMap {
+		if !value.expired(&timeStart) {
+			continue
+		}
+
+		err := queries.EnterUsage(ctxDb, db.EnterUsageParams{
+			Hardwareaddr: int32(key),
+			Starttime: pgtype.Timestamp{
+				Time:  value.lastDbPush,
+				Valid: true,
+			},
+			Stoptime: pgtype.Timestamp{
+				Time:  value.lastSeen,
+				Valid: true,
+			},
+			Egress:  int32(value.egress),
+			Ingress: int32(value.ingress),
+		})
+		if err != nil {
+			log.Println(err)
+		}
+
+		delete(usageMap, key)
 	}
 }
 
@@ -77,19 +124,19 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) {
 			if ok {
 				usage.ingress += batchValues[i]
 				usage.lastSeen = timeStart
-				usageMap[key] = usage;
+				usageMap[key] = usage
 			} else {
-				usageMap[key] = UsageStat {
-					ingress: batchValues[i],
+				usageMap[key] = UsageStat{
+					ingress:    batchValues[i],
 					lastDbPush: timeStart,
-					lastSeen: timeStart,
+					lastSeen:   timeStart,
 				}
 			}
 		}
 
-		if (errors.Is(err, ebpf.ErrKeyNotExist)) {
-			break;
-		} else if err != nil{
+		if errors.Is(err, ebpf.ErrKeyNotExist) {
+			break
+		} else if err != nil {
 			fmt.Println(err)
 			break
 		}
@@ -104,19 +151,19 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) {
 			if ok {
 				usage.egress += batchValues[i]
 				usage.lastSeen = timeStart
-				usageMap[key] = usage;
+				usageMap[key] = usage
 			} else {
-				usageMap[key] = UsageStat {
-					egress: batchValues[i],
+				usageMap[key] = UsageStat{
+					egress:     batchValues[i],
 					lastDbPush: timeStart,
-					lastSeen: timeStart,
+					lastSeen:   timeStart,
 				}
 			}
 		}
 
-		if (errors.Is(err, ebpf.ErrKeyNotExist)) {
-			break;
-		} else if err != nil{
+		if errors.Is(err, ebpf.ErrKeyNotExist) {
+			break
+		} else if err != nil {
 			fmt.Println(err)
 			break
 		}

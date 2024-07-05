@@ -5,7 +5,6 @@ go 1.22.0
 require (
 	github.com/cilium/ebpf v0.15.0
 	github.com/jackc/pgx/v5 v5.6.0
-	golang.org/x/net v0.10.0
 )
 
 require (
