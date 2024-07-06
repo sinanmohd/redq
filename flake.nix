@@ -20,9 +20,6 @@
           go
           gopls
 
-          jq
-          sqlc
-
           libbpf
           ccls
           clang
