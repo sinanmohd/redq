@@ -5,10 +5,7 @@ import (
 	"errors"
 	"log"
 	"net"
-	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -30,18 +27,18 @@ type UsageMap map[uint64]UsageStat
 type Usage struct {
 	Data UsageMap
 	Mutex sync.Mutex
+	objs bpfObjects
 }
 
 func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
-	objs := bpfObjects{}
-	if err := loadBpfObjects(&objs, nil); err != nil {
+	if err := loadBpfObjects(&u.objs, nil); err != nil {
 		log.Fatalf("loading objects: %s", err)
 	}
-	defer objs.Close()
+	defer u.objs.Close()
 
 	ingressLink, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
-		Program:   objs.IngressFunc,
+		Program:   u.objs.IngressFunc,
 		Attach:    ebpf.AttachTCXIngress,
 	})
 	if err != nil {
@@ -51,7 +48,7 @@ func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Con
 
 	egressLink, err := link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
-		Program:   objs.EgressFunc,
+		Program:   u.objs.EgressFunc,
 		Attach:    ebpf.AttachTCXEgress,
 	})
 	if err != nil {
@@ -63,24 +60,16 @@ func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Con
 	defer bpfTicker.Stop()
 	dbTicker := time.NewTicker(time.Minute)
 	defer dbTicker.Stop()
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	for {
 		select {
 		case <-bpfTicker.C:
-			err := u.update(objs.IngressIp4UsageMap, objs.EgressIp4UsageMap)
+			err := u.update(u.objs.IngressIp4UsageMap, u.objs.EgressIp4UsageMap)
 			if err != nil {
 				log.Printf("updating usageMap: %s", err)
 			}
-		case <-sigs:
-			err := u.updateDb(queries, ctxDb, false)
-			if err != nil {
-				log.Printf("updating Database: %s", err)
-			}
-			os.Exit(0)
 		case <-dbTicker.C:
-			err := u.updateDb(queries, ctxDb, true)
+			err := u.UpdateDb(queries, ctxDb, true)
 			if err != nil {
 				log.Printf("updating Database: %s", err)
 			}
@@ -102,7 +91,7 @@ func (usageStat *UsageStat) expired(timeStart *time.Time) bool {
 	return false
 }
 
-func (u *Usage) updateDb(queries *db.Queries, ctxDb context.Context, ifExpired bool) error {
+func (u *Usage) UpdateDb(queries *db.Queries, ctxDb context.Context, ifExpired bool) error {
 	timeStart := time.Now()
 
 	u.Mutex.Lock()
