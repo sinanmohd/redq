@@ -10,11 +10,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"sinanmohd.com/redq/db"
+	"sinanmohd.com/redq/api"
 	"sinanmohd.com/redq/usage"
 )
 
 func main() {
 	var u usage.Usage
+	var a api.Api
 
 	iface, err := net.InterfaceByName("wlan0")
 	if err != nil {
@@ -29,17 +31,24 @@ func main() {
 	defer conn.Close(ctx)
 	queries := db.New(conn)
 
+	err = a.Init()
+	if err != nil {
+		os.Exit(0)
+	}
 	err = u.Init(iface)
 	if err != nil {
 		os.Exit(0)
 	}
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, os.Kill, syscall.SIGTERM)
 	go func() {
 		<-sigs
 		u.CleanUp(queries, ctx)
+		a.CleanUp()
 		os.Exit(0)
 	}()
 
-	u.Run(iface, queries, ctx)
+	go u.Run(iface, queries, ctx)
+	a.Run(&u)
 }
