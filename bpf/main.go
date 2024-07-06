@@ -17,10 +17,12 @@ import (
 )
 
 type UsageStat struct {
-	lastSeen   time.Time
-	lastDbPush time.Time
-	ingress    uint64
-	egress     uint64
+	lastSeen         time.Time
+	lastDbPush       time.Time
+	bandwidthIngress uint64
+	bandwidthEgress  uint64
+	ingress          uint64
+	egress           uint64
 }
 type UsageMap map[uint64]UsageStat
 
@@ -145,14 +147,16 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 			key = batchKeys[i]
 			usage, ok := usageMap[key]
 			if ok {
+				usage.bandwidthIngress = batchValues[i] - usage.ingress
 				usage.ingress += batchValues[i]
 				usage.lastSeen = timeStart
 				usageMap[key] = usage
 			} else {
 				usageMap[key] = UsageStat{
-					ingress:    batchValues[i],
-					lastDbPush: timeStart,
-					lastSeen:   timeStart,
+					bandwidthIngress: batchValues[i],
+					ingress:          batchValues[i],
+					lastDbPush:       timeStart,
+					lastSeen:         timeStart,
 				}
 			}
 		}
@@ -176,14 +180,16 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 			key = batchKeys[i]
 			usage, ok := usageMap[key]
 			if ok {
+				usage.bandwidthEgress = batchValues[i] - usage.egress
 				usage.egress += batchValues[i]
 				usage.lastSeen = timeStart
 				usageMap[key] = usage
 			} else {
 				usageMap[key] = UsageStat{
-					egress:     batchValues[i],
-					lastDbPush: timeStart,
-					lastSeen:   timeStart,
+					bandwidthEgress: batchValues[i],
+					egress:          batchValues[i],
+					lastDbPush:      timeStart,
+					lastSeen:        timeStart,
 				}
 			}
 		}
