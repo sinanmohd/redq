@@ -28,34 +28,63 @@ type Usage struct {
 	Data UsageMap
 	Mutex sync.Mutex
 	objs bpfObjects
+	egressLink, ingressLink link.Link
 }
 
-func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
-	if err := loadBpfObjects(&u.objs, nil); err != nil {
-		log.Fatalf("loading objects: %s", err)
-	}
-	defer u.objs.Close()
+func (u *Usage) Init(iface *net.Interface) error {
+	var err error
 
-	ingressLink, err := link.AttachTCX(link.TCXOptions{
+	if err := loadBpfObjects(&u.objs, nil); err != nil {
+		log.Printf("loading objects: %s", err)
+		return err;
+	}
+	defer func() {
+		if err != nil {
+			u.objs.Close()
+		}
+	}()
+
+	u.ingressLink, err = link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   u.objs.IngressFunc,
 		Attach:    ebpf.AttachTCXIngress,
 	})
 	if err != nil {
-		log.Fatalf("could not attach TCx program: %s", err)
+		log.Printf("could not attach TCx program: %s", err)
+		return err
 	}
-	defer ingressLink.Close()
+	defer func() {
+		if err != nil {
+			u.ingressLink.Close()
+		}
+	}()
 
-	egressLink, err := link.AttachTCX(link.TCXOptions{
+	u.egressLink, err = link.AttachTCX(link.TCXOptions{
 		Interface: iface.Index,
 		Program:   u.objs.EgressFunc,
 		Attach:    ebpf.AttachTCXEgress,
 	})
 	if err != nil {
-		log.Fatalf("could not attach TCx program: %s", err)
+		log.Printf("could not attach TCx program: %s", err)
+		return err
 	}
-	defer egressLink.Close()
 
+	u.Data = make(UsageMap)
+	return nil
+}
+
+func (u *Usage) CleanUp(queries *db.Queries, ctxDb context.Context) {
+	err := u.UpdateDb(queries, ctxDb, false)
+	if err != nil {
+		log.Printf("updating Database: %s", err)
+	}
+
+	u.objs.Close()
+	u.ingressLink.Close()
+	u.egressLink.Close()
+}
+
+func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
 	bpfTicker := time.NewTicker(time.Second)
 	defer bpfTicker.Stop()
 	dbTicker := time.NewTicker(time.Minute)

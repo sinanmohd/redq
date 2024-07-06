@@ -14,10 +14,7 @@ import (
 )
 
 func main() {
-	u := &usage.Usage {
-		Data : make(usage.UsageMap),
-	}
-
+	var u usage.Usage
 
 	iface, err := net.InterfaceByName("wlan0")
 	if err != nil {
@@ -32,14 +29,15 @@ func main() {
 	defer conn.Close(ctx)
 	queries := db.New(conn)
 
+	err = u.Init(iface)
+	if err != nil {
+		os.Exit(0)
+	}
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, os.Kill, syscall.SIGTERM)
 	go func ()  {
 		<- sigs
-		err := u.UpdateDb(queries, ctx, false)
-		if err != nil {
-			log.Printf("updating Database: %s", err)
-		}
+		u.CleanUp(queries, ctx)
 		os.Exit(0)
 	}()
 
