@@ -14,7 +14,7 @@ import (
 	"sinanmohd.com/redq/db"
 )
 
-type UsageStat struct {
+type usageStat struct {
 	lastSeen         time.Time
 	lastDbPush       time.Time
 	BandwidthIngress uint64
@@ -23,11 +23,11 @@ type UsageStat struct {
 	Egress           uint64
 }
 
-type UsageMap map[uint64]UsageStat
+type usageMap map[uint64]usageStat
 type Usage struct {
-	Data UsageMap
-	Mutex sync.Mutex
-	objs bpfObjects
+	Data                    usageMap
+	Mutex                   sync.Mutex
+	objs                    bpfObjects
 	egressLink, ingressLink link.Link
 }
 
@@ -36,7 +36,7 @@ func (u *Usage) Init(iface *net.Interface) error {
 
 	if err := loadBpfObjects(&u.objs, nil); err != nil {
 		log.Printf("loading objects: %s", err)
-		return err;
+		return err
 	}
 	defer func() {
 		if err != nil {
@@ -69,7 +69,7 @@ func (u *Usage) Init(iface *net.Interface) error {
 		return err
 	}
 
-	u.Data = make(UsageMap)
+	u.Data = make(usageMap)
 	return nil
 }
 
@@ -106,13 +106,13 @@ func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Con
 	}
 }
 
-func (usageStat *UsageStat) expired(timeStart *time.Time) bool {
-	timeDiff := timeStart.Sub(usageStat.lastSeen)
+func (us *usageStat) expired(timeStart *time.Time) bool {
+	timeDiff := timeStart.Sub(us.lastSeen)
 	if timeDiff > time.Minute {
 		return true
 	}
 
-	timeDiff = timeStart.Sub(usageStat.lastDbPush)
+	timeDiff = timeStart.Sub(us.lastDbPush)
 	if timeDiff > time.Hour {
 		return true
 	}
@@ -177,7 +177,7 @@ func (u *Usage) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 				usage.lastSeen = timeStart
 				u.Data[key] = usage
 			} else {
-				u.Data[key] = UsageStat{
+				u.Data[key] = usageStat{
 					BandwidthIngress: batchValues[i],
 					Ingress:          batchValues[i],
 					lastDbPush:       timeStart,
@@ -212,7 +212,7 @@ func (u *Usage) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 				usage.lastSeen = timeStart
 				u.Data[key] = usage
 			} else {
-				u.Data[key] = UsageStat{
+				u.Data[key] = usageStat{
 					BandwidthEgress: batchValues[i],
 					Egress:          batchValues[i],
 					lastDbPush:      timeStart,

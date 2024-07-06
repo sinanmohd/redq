@@ -35,8 +35,8 @@ func main() {
 	}
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, os.Kill, syscall.SIGTERM)
-	go func ()  {
-		<- sigs
+	go func() {
+		<-sigs
 		u.CleanUp(queries, ctx)
 		os.Exit(0)
 	}()
