@@ -5,6 +5,9 @@ import (
 	"errors"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -54,6 +57,9 @@ func Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
 	defer bpfTicker.Stop()
 	dbTicker := time.NewTicker(time.Minute)
 	defer dbTicker.Stop()
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, os.Kill, syscall.SIGTERM)
+
 	for {
 		select {
 		case <-bpfTicker.C:
@@ -61,9 +67,14 @@ func Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
 			if err != nil {
 				log.Printf("updating usageMap: %s", err)
 			}
-
+		case <-sigs:
+			err := usageMap.updateDb(queries, ctxDb, false)
+			if err != nil {
+				log.Printf("updating Database: %s", err)
+			}
+			os.Exit(0)
 		case <-dbTicker.C:
-			err := usageMap.updateDb(queries, ctxDb)
+			err := usageMap.updateDb(queries, ctxDb, true)
 			if err != nil {
 				log.Printf("updating Database: %s", err)
 			}
@@ -85,11 +96,11 @@ func (usageStat UsageStat) expired(timeStart *time.Time) bool {
 	return false
 }
 
-func (usageMap UsageMap) updateDb(queries *db.Queries, ctxDb context.Context) error {
+func (usageMap UsageMap) updateDb(queries *db.Queries, ctxDb context.Context, ifExpired bool) error {
 	timeStart := time.Now()
 
 	for key, value := range usageMap {
-		if !value.expired(&timeStart) {
+		if ifExpired && !value.expired(&timeStart) {
 			continue
 		}
 
@@ -149,7 +160,7 @@ func (usageMap UsageMap) update(ingress *ebpf.Map, egress *ebpf.Map) error {
 		if errors.Is(err, ebpf.ErrKeyNotExist) {
 			break
 		} else if err != nil {
-			return  err;
+			return err
 		}
 	}
 
