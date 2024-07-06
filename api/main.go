@@ -13,20 +13,21 @@ type Api struct {
 	sock net.Listener
 }
 
-func (a *Api) Init() error {
+func Close(a *Api) {
+	a.sock.Close()
+}
+
+func New() (*Api, error) {
 	var err error
+	var a Api
 
 	a.sock, err = net.Listen("unix", sockPath)
 	if err != nil {
 		log.Printf("listening on unix socket: %s", err)
-		return err
+		return nil, err
 	}
 
-	return nil
-}
-
-func handleConn(conn net.Conn) {
-	defer conn.Close()
+	return &a, nil
 }
 
 func (a *Api) Run(u *usage.Usage) {
@@ -41,6 +42,6 @@ func (a *Api) Run(u *usage.Usage) {
 	}
 }
 
-func (a *Api) CleanUp() {
-	a.sock.Close()
+func handleConn(conn net.Conn) {
+	defer conn.Close()
 }

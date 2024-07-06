@@ -31,12 +31,24 @@ type Usage struct {
 	egressLink, ingressLink link.Link
 }
 
-func (u *Usage) Init(iface *net.Interface) error {
+func Close(u *Usage, queries *db.Queries, ctxDb context.Context) {
+	err := u.UpdateDb(queries, ctxDb, false)
+	if err != nil {
+		log.Printf("updating Database: %s", err)
+	}
+
+	u.objs.Close()
+	u.ingressLink.Close()
+	u.egressLink.Close()
+}
+
+func New(iface *net.Interface) (*Usage, error) {
 	var err error
+	var u Usage
 
 	if err := loadBpfObjects(&u.objs, nil); err != nil {
 		log.Printf("loading objects: %s", err)
-		return err
+		return nil, err
 	}
 	defer func() {
 		if err != nil {
@@ -51,7 +63,7 @@ func (u *Usage) Init(iface *net.Interface) error {
 	})
 	if err != nil {
 		log.Printf("could not attach TCx program: %s", err)
-		return err
+		return nil, err
 	}
 	defer func() {
 		if err != nil {
@@ -66,22 +78,11 @@ func (u *Usage) Init(iface *net.Interface) error {
 	})
 	if err != nil {
 		log.Printf("could not attach TCx program: %s", err)
-		return err
+		return nil, err
 	}
 
 	u.Data = make(usageMap)
-	return nil
-}
-
-func (u *Usage) CleanUp(queries *db.Queries, ctxDb context.Context) {
-	err := u.UpdateDb(queries, ctxDb, false)
-	if err != nil {
-		log.Printf("updating Database: %s", err)
-	}
-
-	u.objs.Close()
-	u.ingressLink.Close()
-	u.egressLink.Close()
+	return &u, nil
 }
 
 func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Context) {
@@ -104,20 +105,6 @@ func (u *Usage) Run(iface *net.Interface, queries *db.Queries, ctxDb context.Con
 			}
 		}
 	}
-}
-
-func (us *usageStat) expired(timeStart *time.Time) bool {
-	timeDiff := timeStart.Sub(us.lastSeen)
-	if timeDiff > time.Minute {
-		return true
-	}
-
-	timeDiff = timeStart.Sub(us.lastDbPush)
-	if timeDiff > time.Hour {
-		return true
-	}
-
-	return false
 }
 
 func (u *Usage) UpdateDb(queries *db.Queries, ctxDb context.Context, ifExpired bool) error {
@@ -151,6 +138,20 @@ func (u *Usage) UpdateDb(queries *db.Queries, ctxDb context.Context, ifExpired b
 	u.Mutex.Unlock()
 
 	return nil
+}
+
+func (us *usageStat) expired(timeStart *time.Time) bool {
+	timeDiff := timeStart.Sub(us.lastSeen)
+	if timeDiff > time.Minute {
+		return true
+	}
+
+	timeDiff = timeStart.Sub(us.lastDbPush)
+	if timeDiff > time.Hour {
+		return true
+	}
+
+	return false
 }
 
 func (u *Usage) update(ingress *ebpf.Map, egress *ebpf.Map) error {
