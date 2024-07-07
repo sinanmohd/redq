@@ -37,3 +37,19 @@ func (q *Queries) EnterUsage(ctx context.Context, arg EnterUsageParams) error {
 	)
 	return err
 }
+
+const getUsage = `-- name: GetUsage :one
+SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress FROM Usage
+`
+
+type GetUsageRow struct {
+	Ingress int64
+	Egress  int64
+}
+
+func (q *Queries) GetUsage(ctx context.Context) (GetUsageRow, error) {
+	row := q.db.QueryRow(ctx, getUsage)
+	var i GetUsageRow
+	err := row.Scan(&i.Ingress, &i.Egress)
+	return i, err
+}

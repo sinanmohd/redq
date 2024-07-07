@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net"
 
+	"sinanmohd.com/redq/db"
 	"sinanmohd.com/redq/usage"
 )
 
@@ -40,7 +42,7 @@ func New() (*Api, error) {
 	return &a, nil
 }
 
-func (a *Api) Run(u *usage.Usage) {
+func (a *Api) Run(u *usage.Usage, queries *db.Queries, ctxDb context.Context) {
 	for {
 		conn, err := a.sock.Accept()
 		if err != nil {
@@ -48,11 +50,11 @@ func (a *Api) Run(u *usage.Usage) {
 			continue
 		}
 
-		go handleConn(conn, u)
+		go handleConn(conn, u, queries, ctxDb)
 	}
 }
 
-func handleConn(conn net.Conn, u *usage.Usage) {
+func handleConn(conn net.Conn, u *usage.Usage, queries *db.Queries, ctxDb context.Context) {
 	defer conn.Close()
 	var req ApiReq
 	buf := make([]byte, bufSize)
@@ -72,6 +74,8 @@ func handleConn(conn net.Conn, u *usage.Usage) {
 	switch req.Type {
 	case "bandwidth":
 		handleBandwidth(conn, u)
+	case "usage":
+		handleUsage(conn, u, queries, ctxDb)
 	default:
 		log.Printf("invalid request type: %s", req.Type)
 	}
