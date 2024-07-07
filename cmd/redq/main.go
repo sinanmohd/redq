@@ -12,12 +12,10 @@ import (
 	"sinanmohd.com/redq/api"
 	"sinanmohd.com/redq/db"
 	"sinanmohd.com/redq/usage"
+	"sinanmohd.com/redq/dns"
 )
 
 func main() {
-	var u *usage.Usage
-	var a *api.Api
-
 	iface, err := net.InterfaceByName("wlan0")
 	if err != nil {
 		log.Fatalf("lookup network: %s", err)
@@ -31,11 +29,15 @@ func main() {
 	defer conn.Close(ctx)
 	queries := db.New(conn)
 
-	a, err = api.New()
+	d, err := dns.New()
 	if err != nil {
 		os.Exit(0)
 	}
-	u, err = usage.New(iface)
+	a, err := api.New()
+	if err != nil {
+		os.Exit(0)
+	}
+	u, err := usage.New(iface)
 	if err != nil {
 		os.Exit(0)
 	}
@@ -50,5 +52,7 @@ func main() {
 	}()
 
 	go u.Run(iface, queries, ctx)
+	go d.Run()
+
 	a.Run(u, queries, ctx)
 }
