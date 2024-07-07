@@ -8,7 +8,7 @@ import (
 
 	"github.com/cilium/cilium/pkg/mac"
 	"github.com/dustin/go-humanize"
-	"sinanmohd.com/redq/usage"
+	"sinanmohd.com/redq/bpf/usage"
 )
 
 type BandwidthStat struct {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"sinanmohd.com/redq/db"
-	"sinanmohd.com/redq/usage"
+	"sinanmohd.com/redq/bpf/usage"
 )
 
 type UsageStat struct {

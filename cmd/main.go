@@ -12,7 +12,7 @@ import (
 	"sinanmohd.com/redq/api"
 	"sinanmohd.com/redq/db"
 	"sinanmohd.com/redq/dns"
-	"sinanmohd.com/redq/usage"
+	"sinanmohd.com/redq/bpf/usage"
 )
 
 func main() {

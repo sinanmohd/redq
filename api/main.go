@@ -8,7 +8,7 @@ import (
 
 	"sinanmohd.com/redq/db"
 	"sinanmohd.com/redq/dns"
-	"sinanmohd.com/redq/usage"
+	"sinanmohd.com/redq/bpf/usage"
 )
 
 const (
