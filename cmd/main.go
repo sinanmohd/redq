@@ -11,8 +11,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"sinanmohd.com/redq/api"
 	"sinanmohd.com/redq/db"
-	"sinanmohd.com/redq/usage"
 	"sinanmohd.com/redq/dns"
+	"sinanmohd.com/redq/usage"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	defer conn.Close(ctx)
 	queries := db.New(conn)
 
-	d, err := dns.New()
+	d, err := dns.New(queries, ctx)
 	if err != nil {
 		os.Exit(0)
 	}

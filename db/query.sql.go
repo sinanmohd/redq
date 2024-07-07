@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const enterDnsBlackList = `-- name: EnterDnsBlackList :exec
+INSERT INTO DnsBlackList (
+  Name
+) VALUES (
+  $1
+)
+`
+
+func (q *Queries) EnterDnsBlackList(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, enterDnsBlackList, name)
+	return err
+}
+
 const enterUsage = `-- name: EnterUsage :exec
 INSERT INTO Usage (
   HardwareAddr, StartTime, StopTime, Egress, Ingress
@@ -38,8 +51,34 @@ func (q *Queries) EnterUsage(ctx context.Context, arg EnterUsageParams) error {
 	return err
 }
 
+const getDnsBlackList = `-- name: GetDnsBlackList :many
+SELECT name
+FROM DnsBlackList
+`
+
+func (q *Queries) GetDnsBlackList(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, getDnsBlackList)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUsage = `-- name: GetUsage :one
-SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress FROM Usage
+SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress
+FROM Usage
 `
 
 type GetUsageRow struct {

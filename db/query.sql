@@ -6,4 +6,16 @@ INSERT INTO Usage (
 );
 
 -- name: GetUsage :one
-SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress FROM Usage;
+SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress
+FROM Usage;
+
+-- name: EnterDnsBlackList :exec
+INSERT INTO DnsBlackList (
+  Name
+) VALUES (
+  $1
+);
+
+-- name: GetDnsBlackList :many
+SELECT *
+FROM DnsBlackList;
