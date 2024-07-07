@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"sinanmohd.com/redq/db"
+	"sinanmohd.com/redq/dns"
 	"sinanmohd.com/redq/usage"
 )
 
@@ -16,9 +17,9 @@ const (
 )
 
 type ApiReq struct {
-	Type   string `json:"type"`
-	Action string `json:"action"`
-	Arg    string `json:"arg"`
+	Type   string   `json:"type"`
+	Action string   `json:"action"`
+	Arg    []string `json:"arg"`
 }
 
 type Api struct {
@@ -42,7 +43,7 @@ func New() (*Api, error) {
 	return &a, nil
 }
 
-func (a *Api) Run(u *usage.Usage, queries *db.Queries, ctxDb context.Context) {
+func (a *Api) Run(u *usage.Usage, d *dns.Dns, queries *db.Queries, ctxDb context.Context) {
 	for {
 		conn, err := a.sock.Accept()
 		if err != nil {
@@ -50,11 +51,11 @@ func (a *Api) Run(u *usage.Usage, queries *db.Queries, ctxDb context.Context) {
 			continue
 		}
 
-		go handleConn(conn, u, queries, ctxDb)
+		go handleConn(conn, u, d, queries, ctxDb)
 	}
 }
 
-func handleConn(conn net.Conn, u *usage.Usage, queries *db.Queries, ctxDb context.Context) {
+func handleConn(conn net.Conn, u *usage.Usage, d *dns.Dns, queries *db.Queries, ctxDb context.Context) {
 	defer conn.Close()
 	var req ApiReq
 	buf := make([]byte, bufSize)
@@ -76,6 +77,8 @@ func handleConn(conn net.Conn, u *usage.Usage, queries *db.Queries, ctxDb contex
 		handleBandwidth(conn, u)
 	case "usage":
 		handleUsage(conn, u, queries, ctxDb)
+	case "dns":
+		handleDns(conn, d, req.Arg, req.Action)
 	default:
 		log.Printf("invalid request type: %s", req.Type)
 	}

@@ -11,6 +11,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteDnsBlackList = `-- name: DeleteDnsBlackList :exec
+DELETE FROM DnsBlackList
+WHERE Name = $1
+`
+
+func (q *Queries) DeleteDnsBlackList(ctx context.Context, name string) error {
+	_, err := q.db.Exec(ctx, deleteDnsBlackList, name)
+	return err
+}
+
 const enterDnsBlackList = `-- name: EnterDnsBlackList :exec
 INSERT INTO DnsBlackList (
   Name
@@ -52,8 +62,7 @@ func (q *Queries) EnterUsage(ctx context.Context, arg EnterUsageParams) error {
 }
 
 const getDnsBlackList = `-- name: GetDnsBlackList :many
-SELECT name
-FROM DnsBlackList
+SELECT name FROM DnsBlackList
 `
 
 func (q *Queries) GetDnsBlackList(ctx context.Context) ([]string, error) {
@@ -77,8 +86,7 @@ func (q *Queries) GetDnsBlackList(ctx context.Context) ([]string, error) {
 }
 
 const getUsage = `-- name: GetUsage :one
-SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress
-FROM Usage
+SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress FROM Usage
 `
 
 type GetUsageRow struct {

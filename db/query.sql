@@ -6,8 +6,7 @@ INSERT INTO Usage (
 );
 
 -- name: GetUsage :one
-SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress
-FROM Usage;
+SELECT SUM(Ingress) AS Ingress, SUM(Egress) AS Egress FROM Usage;
 
 -- name: EnterDnsBlackList :exec
 INSERT INTO DnsBlackList (
@@ -16,6 +15,9 @@ INSERT INTO DnsBlackList (
   $1
 );
 
+-- name: DeleteDnsBlackList :exec
+DELETE FROM DnsBlackList
+WHERE Name = $1;
+
 -- name: GetDnsBlackList :many
-SELECT *
-FROM DnsBlackList;
+SELECT * FROM DnsBlackList;

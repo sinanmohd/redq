@@ -37,6 +37,7 @@ func (d *Dns) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		resp = new(dns.Msg)
 		resp.SetReply(req)
 		w.WriteMsg(resp)
+		d.blackList.mutex.RUnlock()
 		return
 	}
 	d.blackList.mutex.RUnlock()
@@ -91,4 +92,32 @@ func New(queries *db.Queries, ctxDb context.Context) (*Dns, error) {
 
 func (d *Dns) Run() {
 	d.server.ListenAndServe()
+}
+
+func (d *Dns) Block(domain string) error {
+	err := d.queries.EnterDnsBlackList(d.ctxDb, domain)
+	if err != nil {
+		log.Printf("adding dns blacklist entry: %s", err)
+		return err
+	}
+
+	d.blackList.mutex.Lock()
+	d.blackList.data[domain] = true
+	d.blackList.mutex.Unlock()
+
+	return nil
+}
+
+func (d *Dns) Unblock(domain string) error {
+	err := d.queries.DeleteDnsBlackList(d.ctxDb, domain)
+	if err != nil {
+		log.Printf("deleting dns blacklist entry: %s", err)
+		return err
+	}
+
+	d.blackList.mutex.Lock()
+	delete(d.blackList.data, domain)
+	d.blackList.mutex.Unlock()
+
+	return nil
 }
