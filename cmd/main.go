@@ -13,6 +13,7 @@ import (
 	"sinanmohd.com/redq/db"
 	"sinanmohd.com/redq/dns"
 	"sinanmohd.com/redq/bpf/usage"
+	"sinanmohd.com/redq/bpf/filter"
 )
 
 func main() {
@@ -37,6 +38,10 @@ func main() {
 	if err != nil {
 		os.Exit(0)
 	}
+	f, err := filter.New(iface, queries, ctx)
+	if err != nil {
+		os.Exit(0)
+	}
 	u, err := usage.New(iface)
 	if err != nil {
 		os.Exit(0)
@@ -47,6 +52,7 @@ func main() {
 	go func() {
 		<-sigs
 		usage.Close(u, queries, ctx)
+		filter.Close(f)
 		api.Close(a)
 		os.Exit(0)
 	}()

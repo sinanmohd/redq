@@ -21,3 +21,17 @@ WHERE Name = $1;
 
 -- name: GetDnsBlackList :many
 SELECT * FROM DnsBlackList;
+
+-- name: EnterMacBlackList :exec
+INSERT INTO MacBlackList (
+  HardwareAddr
+) VALUES (
+  $1
+);
+
+-- name: DeleteMacBlackList :exec
+DELETE FROM MacBlackList
+WHERE HardwareAddr = $1;
+
+-- name: GetMacBlackList :many
+SELECT * FROM MacBlackList;

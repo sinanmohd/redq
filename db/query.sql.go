@@ -21,6 +21,16 @@ func (q *Queries) DeleteDnsBlackList(ctx context.Context, name string) error {
 	return err
 }
 
+const deleteMacBlackList = `-- name: DeleteMacBlackList :exec
+DELETE FROM MacBlackList
+WHERE HardwareAddr = $1
+`
+
+func (q *Queries) DeleteMacBlackList(ctx context.Context, hardwareaddr int64) error {
+	_, err := q.db.Exec(ctx, deleteMacBlackList, hardwareaddr)
+	return err
+}
+
 const enterDnsBlackList = `-- name: EnterDnsBlackList :exec
 INSERT INTO DnsBlackList (
   Name
@@ -31,6 +41,19 @@ INSERT INTO DnsBlackList (
 
 func (q *Queries) EnterDnsBlackList(ctx context.Context, name string) error {
 	_, err := q.db.Exec(ctx, enterDnsBlackList, name)
+	return err
+}
+
+const enterMacBlackList = `-- name: EnterMacBlackList :exec
+INSERT INTO MacBlackList (
+  HardwareAddr
+) VALUES (
+  $1
+)
+`
+
+func (q *Queries) EnterMacBlackList(ctx context.Context, hardwareaddr int64) error {
+	_, err := q.db.Exec(ctx, enterMacBlackList, hardwareaddr)
 	return err
 }
 
@@ -78,6 +101,30 @@ func (q *Queries) GetDnsBlackList(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMacBlackList = `-- name: GetMacBlackList :many
+SELECT hardwareaddr FROM MacBlackList
+`
+
+func (q *Queries) GetMacBlackList(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.Query(ctx, getMacBlackList)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var hardwareaddr int64
+		if err := rows.Scan(&hardwareaddr); err != nil {
+			return nil, err
+		}
+		items = append(items, hardwareaddr)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

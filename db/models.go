@@ -12,6 +12,10 @@ type Dnsblacklist struct {
 	Name string
 }
 
+type Macblacklist struct {
+	Hardwareaddr int64
+}
+
 type Usage struct {
 	Hardwareaddr int64
 	Starttime    pgtype.Timestamp
