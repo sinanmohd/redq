@@ -6,9 +6,10 @@ import (
 	"log"
 	"net"
 
+	"sinanmohd.com/redq/bpf/filter"
+	"sinanmohd.com/redq/bpf/usage"
 	"sinanmohd.com/redq/db"
 	"sinanmohd.com/redq/dns"
-	"sinanmohd.com/redq/bpf/usage"
 )
 
 const (
@@ -43,7 +44,7 @@ func New() (*Api, error) {
 	return &a, nil
 }
 
-func (a *Api) Run(u *usage.Usage, d *dns.Dns, queries *db.Queries, ctxDb context.Context) {
+func (a *Api) Run(u *usage.Usage, d *dns.Dns, f *filter.Filter, queries *db.Queries, ctxDb context.Context) {
 	for {
 		conn, err := a.sock.Accept()
 		if err != nil {
@@ -51,11 +52,11 @@ func (a *Api) Run(u *usage.Usage, d *dns.Dns, queries *db.Queries, ctxDb context
 			continue
 		}
 
-		go handleConn(conn, u, d, queries, ctxDb)
+		go handleConn(conn, u, d, f, queries, ctxDb)
 	}
 }
 
-func handleConn(conn net.Conn, u *usage.Usage, d *dns.Dns, queries *db.Queries, ctxDb context.Context) {
+func handleConn(conn net.Conn, u *usage.Usage, d *dns.Dns, f *filter.Filter, queries *db.Queries, ctxDb context.Context) {
 	defer conn.Close()
 	var req ApiReq
 	buf := make([]byte, bufSize)
@@ -79,6 +80,8 @@ func handleConn(conn net.Conn, u *usage.Usage, d *dns.Dns, queries *db.Queries, 
 		handleUsage(conn, u, queries, ctxDb)
 	case "dns":
 		handleDns(conn, d, req.Arg, req.Action)
+	case "filter":
+		handleFilter(conn, f, req.Arg, req.Action)
 	default:
 		log.Printf("invalid request type: %s", req.Type)
 	}

@@ -60,5 +60,5 @@ func main() {
 	go u.Run(iface, queries, ctx)
 	go d.Run()
 
-	a.Run(u, d, queries, ctx)
+	a.Run(u, d, f, queries, ctx)
 }
